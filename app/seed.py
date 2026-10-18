@@ -23,7 +23,7 @@ def load_meta_by_file() -> dict[str, dict]:
     return {row["file_name"]: row for row in data.get("documents", []) if row.get("file_name")}
 
 
-def seed_from_synthetic(*, db_path: Path | None = None) -> dict:
+def seed_from_library(*, db_path: Path | None = None) -> dict:
     db_path = db_path or DOCS_DB
     init_db(db_path)
     library_id = ensure_default_library(db_path)
@@ -81,3 +81,7 @@ def seed_from_synthetic(*, db_path: Path | None = None) -> dict:
         "seed_dir": str(SEED_DIR),
         "catalog_db": str(db_path),
     }
+
+
+# Back-compat alias (deprecated route name).
+seed_from_synthetic = seed_from_library

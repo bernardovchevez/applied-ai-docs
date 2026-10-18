@@ -8,7 +8,7 @@ echo "== health =="
 curl -sf "${BASE}/health" | python3 -m json.tool
 
 echo "== seed =="
-curl -sf -X POST "${BASE}/admin/seed-from-synthetic" | python3 -m json.tool
+curl -sf -X POST "${BASE}/admin/seed-from-library" | python3 -m json.tool
 
 echo "== items (first publish pending count) =="
 curl -sf "${BASE}/api/items" | python3 -m json.tool | head -40

@@ -19,7 +19,7 @@ from app.crud import create_item, item_to_detail, update_item
 from app.database import get_item, init_db, list_items
 from app.publish import delete_and_unindex, publish_all_pending, publish_item
 from app.schemas import ItemCreate, ItemUpdate
-from app.seed import seed_from_synthetic
+from app.seed import seed_from_library
 
 app = FastAPI(
     title="Applied AI Docs",
@@ -59,12 +59,22 @@ def health() -> dict:
     }
 
 
-@app.post("/admin/seed-from-synthetic")
-def admin_seed() -> dict:
+def _admin_seed_from_library() -> dict:
     try:
-        return seed_from_synthetic()
+        return seed_from_library()
     except FileNotFoundError as exc:
         raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/admin/seed-from-library")
+def admin_seed_from_library() -> dict:
+    return _admin_seed_from_library()
+
+
+@app.post("/admin/seed-from-synthetic", deprecated=True)
+def admin_seed_from_synthetic_legacy() -> dict:
+    """Deprecated: use POST /admin/seed-from-library."""
+    return _admin_seed_from_library()
 
 
 @app.get("/api/items")

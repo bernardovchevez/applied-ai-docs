@@ -271,7 +271,7 @@
 
     document.getElementById("btnSeed").addEventListener("click", async () => {
       try {
-        setLog(logEl, await api("/admin/seed-from-synthetic", { method: "POST" }));
+        setLog(logEl, await api("/admin/seed-from-library", { method: "POST" }));
         await refreshList();
       } catch (e) { setLog(logEl, { error: String(e) }); }
     });
