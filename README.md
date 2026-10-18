@@ -1,6 +1,8 @@
 # applied-ai-docs
 
-SharePoint-style **document catalog** for the Applied AI Platform. Manages Harbor Line demo libraries, publishes content to `applied-ai-platform/data/lake/raw/`, and emits `document_ingested` events for `embed_worker.py`.
+SharePoint-style **document catalog** for the Applied AI Platform. **Source of truth for document bodies and library metadata**; [applied-ai-platform](https://github.com/bernardovchevez/applied-ai-platform) owns pgvector, RAG, and agents **after Publish**.
+
+Publishes to `data/lake/raw/` and emits `document_ingested` events for `embed_worker.py`. See platform [document-corpus-sources.md](https://github.com/bernardovchevez/applied-ai-platform/blob/main/docs/document-corpus-sources.md).
 
 ```
 applied-ai-platform/   ← RAG, BFF, pgvector, embed worker
@@ -70,6 +72,7 @@ chmod +x scripts/smoke_local.sh
 | PUT | `/api/items/{item_id}` | Update metadata and/or body (marks publish pending) |
 | POST | `/api/items/{item_id}/publish` | Publish one item to lake + event |
 | POST | `/api/admin/publish-all-pending` | Publish all changed items |
+| DELETE | `/api/items/{item_id}` | Remove catalog item, lake file, and emit index delete event |
 
 Optional query: `?run_worker=true` on publish routes if `RUN_EMBED_WORKER=true` and platform venv Python is configured.
 

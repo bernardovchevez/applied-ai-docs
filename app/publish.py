@@ -35,6 +35,20 @@ def read_item_content(item: ItemRecord) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def remove_sharepoint_meta_entries(lake_raw: Path, file_names: list[str]) -> None:
+    if not file_names:
+        return
+    meta_path = lake_raw / "sharepoint-meta.json"
+    if not meta_path.exists():
+        return
+    existing = json.loads(meta_path.read_text(encoding="utf-8"))
+    drop = set(file_names)
+    existing["documents"] = [
+        d for d in existing.get("documents", []) if d.get("file_name") not in drop
+    ]
+    meta_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def sync_sharepoint_meta(lake_raw: Path, items: list[ItemRecord]) -> None:
     """Merge catalog metadata into lake sharepoint-meta.json for embed_worker."""
     meta_path = lake_raw / "sharepoint-meta.json"
@@ -136,6 +150,67 @@ def run_embed_worker(event_path: Path) -> dict:
         "returncode": proc.returncode,
         "stdout": proc.stdout[-2000:] if proc.stdout else "",
         "stderr": proc.stderr[-2000:] if proc.stderr else "",
+    }
+
+
+def delete_and_unindex(
+    db_path: Path,
+    item_id: str,
+    *,
+    run_worker: bool | None = None,
+) -> dict:
+    from app.database import delete_item
+
+    item = get_item(db_path, item_id)
+    if not item:
+        raise ValueError(f"Unknown item_id: {item_id}")
+
+    event_path = None
+    worker_result = None
+    lake_path = LAKE_RAW_DIR / item.rel_path
+
+    if item.published_content_hash or lake_path.exists():
+        row = build_publish_row(
+            rel_path=item.rel_path,
+            file_name=item.file_name,
+            content_hash=item.published_content_hash or item.content_hash or "",
+            byte_size=0,
+            sharepoint_path=item.sharepoint_path,
+            doc_type=item.doc_type,
+            department=item.department,
+            confidentiality=item.confidentiality,
+            series=item.series,
+            rights_tier=item.rights_tier,
+            tags=item.tags,
+            territory_status=item.territory_status,
+            clearance_territories=item.clearance_territories,
+        )
+        event = build_event(
+            row,
+            raw_dir=LAKE_RAW_DIR,
+            operation="delete",
+            correlation_id=f"delete-{item_id[:8]}",
+        )
+        event_path = write_event(event, EVENTS_DIR)
+        should_run = RUN_EMBED_WORKER if run_worker is None else run_worker
+        if should_run:
+            worker_result = run_embed_worker(event_path)
+
+    if lake_path.exists():
+        lake_path.unlink()
+    remove_sharepoint_meta_entries(LAKE_RAW_DIR, [item.file_name])
+    blob = blob_path_for_item(item_id)
+    if blob.exists():
+        blob.unlink()
+    delete_item(db_path, item_id)
+
+    return {
+        "item_id": item_id,
+        "rel_path": item.rel_path,
+        "deleted_from_catalog": True,
+        "event_path": str(event_path) if event_path else None,
+        "doc_key": Path(item.rel_path).stem,
+        "embed_worker": worker_result,
     }
 
 

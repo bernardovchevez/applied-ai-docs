@@ -49,6 +49,9 @@
       <button class="primary" id="btnSeed">Seed from synthetic</button>
       <button id="btnRefresh">Refresh</button>
       <button id="btnPublishAll">Publish all pending</button>
+      <label class="muted" style="display:flex;align-items:center;gap:0.35rem;margin:0;">
+        <input type="checkbox" id="runWorker" /> Run embed worker after publish
+      </label>
     </div>
     <p id="status" class="muted"></p>
     <table>
@@ -64,6 +67,7 @@
       <a class="link-btn" href="#/">← Back to list</a>
       <button id="btnSave" class="primary">Save changes</button>
       <button id="btnPublishOne">Publish to AI index</button>
+      <button id="btnDelete" style="border-color:#fecaca;color:#b91c1c;">Delete document</button>
     </div>
     <p id="detailStatus" class="muted"></p>
     <div class="panel" id="detailForm"></div>
@@ -92,6 +96,10 @@
   <script>
     const statusEl = document.getElementById("status");
     const logEl = document.getElementById("log");
+
+    function workerQuery() {
+      return document.getElementById("runWorker")?.checked ? "?run_worker=true" : "";
+    }
 
     async function api(path, opts) {
       const res = await fetch(path, opts);
@@ -198,7 +206,7 @@
       rowsEl.querySelectorAll("button[data-pub]").forEach((btn) => {
         btn.addEventListener("click", async () => {
           try {
-            setLog(logEl, await api(`/api/items/${btn.dataset.pub}/publish`, { method: "POST" }));
+            setLog(logEl, await api(`/api/items/${btn.dataset.pub}/publish${workerQuery()}`, { method: "POST" }));
             await refreshList();
           } catch (e) { setLog(logEl, { error: String(e) }); }
         });
@@ -270,7 +278,7 @@
     document.getElementById("btnRefresh").addEventListener("click", refreshList);
     document.getElementById("btnPublishAll").addEventListener("click", async () => {
       try {
-        setLog(logEl, await api("/api/admin/publish-all-pending?run_worker=false", { method: "POST" }));
+        setLog(logEl, await api(`/api/admin/publish-all-pending${workerQuery()}`, { method: "POST" }));
         await refreshList();
       } catch (e) { setLog(logEl, { error: String(e) }); }
     });
@@ -292,8 +300,17 @@
     document.getElementById("btnPublishOne").addEventListener("click", async () => {
       if (!currentItemId) return;
       try {
-        setLog(document.getElementById("logDetail"), await api(`/api/items/${currentItemId}/publish`, { method: "POST" }));
+        setLog(document.getElementById("logDetail"), await api(`/api/items/${currentItemId}/publish${workerQuery()}`, { method: "POST" }));
         await openDetail(currentItemId);
+      } catch (e) { setLog(document.getElementById("logDetail"), { error: String(e) }); }
+    });
+
+    document.getElementById("btnDelete").addEventListener("click", async () => {
+      if (!currentItemId || !confirm("Delete this document from the catalog and request index removal?")) return;
+      try {
+        setLog(document.getElementById("logDetail"), await api(`/api/items/${currentItemId}${workerQuery()}`, { method: "DELETE" }));
+        location.hash = "#/";
+        await route();
       } catch (e) { setLog(document.getElementById("logDetail"), { error: String(e) }); }
     });
 

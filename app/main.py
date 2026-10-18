@@ -17,7 +17,7 @@ from app.config import (
 )
 from app.crud import create_item, item_to_detail, update_item
 from app.database import get_item, init_db, list_items
-from app.publish import publish_all_pending, publish_item
+from app.publish import delete_and_unindex, publish_all_pending, publish_item
 from app.schemas import ItemCreate, ItemUpdate
 from app.seed import seed_from_synthetic
 
@@ -114,6 +114,14 @@ def api_publish_item(item_id: str, run_worker: bool = False) -> dict:
 def api_publish_all(run_worker: bool = False) -> dict:
     results = publish_all_pending(DOCS_DB, run_worker=run_worker)
     return {"published": len(results), "results": results}
+
+
+@app.delete("/api/items/{item_id}")
+def api_delete_item(item_id: str, run_worker: bool = False) -> dict:
+    try:
+        return delete_and_unindex(DOCS_DB, item_id, run_worker=run_worker)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
 
 
 def main() -> None:

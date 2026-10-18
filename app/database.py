@@ -254,6 +254,13 @@ def upsert_item(
     return _row_to_item(row)
 
 
+def delete_item(db_path: Path, item_id: str) -> bool:
+    with connect(db_path) as conn:
+        cur = conn.execute("DELETE FROM items WHERE item_id = ?", (item_id,))
+        conn.commit()
+        return cur.rowcount > 0
+
+
 def mark_published(db_path: Path, item_id: str, content_hash: str) -> None:
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     with connect(db_path) as conn:
