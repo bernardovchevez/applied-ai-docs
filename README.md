@@ -62,6 +62,15 @@ chmod +x scripts/smoke_local.sh
 ./scripts/smoke_local.sh
 ```
 
+### 6. Automated tests (CI)
+
+```bash
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+GitHub Actions runs the same suite on push/PR to `main` (`.github/workflows/ci.yml`). Tests use temp lake/events paths and a minimal seed fixture under `tests/fixtures/`.
+
 ## API (MVP)
 
 | Method | Path | Description |
