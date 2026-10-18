@@ -58,11 +58,11 @@ npm run build && npm run start:localhost
 
 ## Dev fallback (no docs UI)
 
-Copy seed from the docs repo into the lake and batch-ingest (rare; flag name is legacy):
+Copy seed from the docs repo into the lake and batch-ingest (rare):
 
 ```bash
 cd applied-ai-platform
-python platform/pipelines/ingest_batch.py --seed-from-synthetic --emit-events
+python platform/pipelines/ingest_batch.py --seed-from-library --emit-events
 python platform/pipelines/embed_worker.py
 ```
 

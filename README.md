@@ -75,7 +75,7 @@ GitHub Actions runs the same suite on push/PR to `main` (`.github/workflows/ci.y
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Paths and platform/synthetic presence |
+| GET | `/health` | Paths and platform/seed presence |
 | POST | `/admin/seed-from-library` | Import `seed/harbor-line/` into catalog (`/admin/seed-from-synthetic` deprecated) |
 | GET | `/api/items` | List catalog items |
 | GET | `/api/items/{item_id}` | Item metadata + markdown body |
