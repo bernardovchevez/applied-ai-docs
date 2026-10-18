@@ -13,7 +13,7 @@ from app.config import (
     EVENTS_DIR,
     LAKE_RAW_DIR,
     PLATFORM_ROOT,
-    SYNTHETIC_DIR,
+    SEED_DIR,
 )
 from app.crud import create_item, item_to_detail, update_item
 from app.database import get_item, init_db, list_items
@@ -51,8 +51,8 @@ def health() -> dict:
         "status": "ok",
         "platform_root": str(PLATFORM_ROOT),
         "platform_root_exists": PLATFORM_ROOT.is_dir(),
-        "synthetic_dir": str(SYNTHETIC_DIR),
-        "synthetic_exists": SYNTHETIC_DIR.is_dir(),
+        "seed_dir": str(SEED_DIR),
+        "seed_exists": SEED_DIR.is_dir(),
         "lake_raw_dir": str(LAKE_RAW_DIR),
         "events_dir": str(EVENTS_DIR),
         "catalog_db": str(DOCS_DB),

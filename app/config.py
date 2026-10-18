@@ -36,8 +36,10 @@ EVENTS_DIR = Path(
     )
 ).resolve()
 
-SYNTHETIC_DIR = PLATFORM_ROOT / "data" / "synthetic"
-SYNTHETIC_META = SYNTHETIC_DIR / "sharepoint-meta.json"
+SEED_DIR = Path(
+    os.getenv("SEED_DIR", DOCS_ROOT / "seed" / "harbor-line")
+).resolve()
+SEED_META = SEED_DIR / "sharepoint-meta.json"
 
 DOCS_DB = Path(os.getenv("DOCS_DB", DOCS_ROOT / "data" / "catalog.sqlite")).resolve()
 DOCS_BLOB_DIR = Path(os.getenv("DOCS_BLOB_DIR", DOCS_ROOT / "data" / "blobs")).resolve()

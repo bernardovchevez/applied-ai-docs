@@ -46,7 +46,7 @@
   <div id="view-list">
     <div class="actions">
       <a class="link-btn primary" href="#/new">New document</a>
-      <button class="primary" id="btnSeed">Seed from synthetic</button>
+      <button class="primary" id="btnSeed">Import seed library</button>
       <button id="btnRefresh">Refresh</button>
       <button id="btnPublishAll">Publish all pending</button>
       <label class="muted" style="display:flex;align-items:center;gap:0.35rem;margin:0;">
@@ -180,7 +180,7 @@
 
     async function loadHealth() {
       const h = await api("/health");
-      statusEl.textContent = `Platform: ${h.platform_root_exists ? "ok" : "MISSING"} · Catalog: ${h.catalog_db}`;
+      statusEl.textContent = `Platform: ${h.platform_root_exists ? "ok" : "MISSING"} · Seed: ${h.seed_exists ? "ok" : "MISSING"}`;
     }
 
     async function loadItems() {

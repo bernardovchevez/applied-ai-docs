@@ -7,7 +7,7 @@ import json
 import shutil
 from pathlib import Path
 
-from app.config import DOCS_BLOB_DIR, DOCS_DB, SYNTHETIC_DIR, SYNTHETIC_META
+from app.config import DOCS_BLOB_DIR, DOCS_DB, SEED_DIR, SEED_META
 from app.database import ensure_default_library, init_db, upsert_item
 from app.rights import derive_rights_tier
 
@@ -17,9 +17,9 @@ def _content_hash(text: str) -> str:
 
 
 def load_meta_by_file() -> dict[str, dict]:
-    if not SYNTHETIC_META.exists():
+    if not SEED_META.exists():
         return {}
-    data = json.loads(SYNTHETIC_META.read_text(encoding="utf-8"))
+    data = json.loads(SEED_META.read_text(encoding="utf-8"))
     return {row["file_name"]: row for row in data.get("documents", []) if row.get("file_name")}
 
 
@@ -28,9 +28,9 @@ def seed_from_synthetic(*, db_path: Path | None = None) -> dict:
     init_db(db_path)
     library_id = ensure_default_library(db_path)
 
-    if not SYNTHETIC_DIR.exists():
+    if not SEED_DIR.exists():
         raise FileNotFoundError(
-            f"Synthetic corpus not found at {SYNTHETIC_DIR}. Set PLATFORM_ROOT correctly."
+            f"Seed corpus not found at {SEED_DIR}. Clone applied-ai-docs with seed/harbor-line/."
         )
 
     meta_by_file = load_meta_by_file()
@@ -38,7 +38,7 @@ def seed_from_synthetic(*, db_path: Path | None = None) -> dict:
 
     imported = 0
     skipped = 0
-    for src in sorted(SYNTHETIC_DIR.rglob("*")):
+    for src in sorted(SEED_DIR.rglob("*")):
         if not src.is_file():
             continue
         if src.suffix.lower() not in {".md", ".txt"}:
@@ -46,10 +46,10 @@ def seed_from_synthetic(*, db_path: Path | None = None) -> dict:
         if src.name == "sharepoint-meta.json":
             continue
 
-        rel_path = str(src.relative_to(SYNTHETIC_DIR))
+        rel_path = str(src.relative_to(SEED_DIR))
         sp = meta_by_file.get(src.name, {})
         doc_type = sp.get("doc_type") or (
-            src.parent.name if src.parent != SYNTHETIC_DIR else "general"
+            src.parent.name if src.parent != SEED_DIR else "general"
         )
         text = src.read_text(encoding="utf-8")
         chash = _content_hash(text)
@@ -78,6 +78,6 @@ def seed_from_synthetic(*, db_path: Path | None = None) -> dict:
         "library_id": library_id,
         "imported": imported,
         "skipped": skipped,
-        "synthetic_dir": str(SYNTHETIC_DIR),
+        "seed_dir": str(SEED_DIR),
         "catalog_db": str(db_path),
     }

@@ -11,6 +11,8 @@ applied-ai-web/        ← chat UI
 applied-ai-slack/      ← Slack ops UI
 ```
 
+Full stack walkthrough: **[docs/localhost-setup.md](docs/localhost-setup.md)**.
+
 ## Local setup
 
 ### 1. Prerequisites
@@ -38,7 +40,7 @@ Open [http://127.0.0.1:8010/](http://127.0.0.1:8010/)
 
 ### 4. Confirm locally (UI)
 
-1. Click **Seed from synthetic** (imports `data/synthetic/` into the catalog), or **New document** to create one.
+1. Click **Import seed library** (loads `seed/harbor-line/` into the catalog), or **New document** to create one.
 2. **Open** a row to view/edit markdown and metadata; **Save changes**, then **Publish to AI index** (or use **Publish all pending** on the list).
 3. On the platform repo, index changes:
 
