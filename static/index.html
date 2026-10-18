@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Applied AI Docs</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #0f172a; background: #f8fafc; }
+    body { max-width: 1024px; margin: 0 auto; padding: 1.5rem; }
+    h1 { font-size: 1.35rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.1rem; margin-top: 1.5rem; }
+    .muted { color: #64748b; font-size: 0.9rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: center; }
+    button, .link-btn {
+      padding: 0.45rem 0.75rem; border-radius: 6px; border: 1px solid #cbd5e1;
+      background: #fff; cursor: pointer; font-size: 0.85rem; text-decoration: none; color: inherit;
+    }
+    button.primary, .link-btn.primary { background: #0f172a; color: #fff; border-color: #0f172a; }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    .badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 4px; background: #fef3c7; }
+    .badge.ok { background: #dcfce7; }
+    pre.log { background: #1e293b; color: #e2e8f0; padding: 0.75rem; border-radius: 8px; overflow: auto; font-size: 0.75rem; }
+    .panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; margin-top: 0.75rem; }
+    input, textarea, select {
+      width: 100%; box-sizing: border-box; margin-top: 0.25rem;
+      padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font: inherit;
+    }
+    textarea { min-height: 200px; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+    .preview { border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem; background: #fff; min-height: 120px; }
+    .preview h1, .preview h2, .preview h3 { margin-top: 0.5rem; }
+    .hidden { display: none !important; }
+    .row-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Applied AI Docs</h1>
+    <p class="muted">Catalog → lake raw → <code>document_ingested</code> → embed worker</p>
+  </header>
+
+  <div id="view-list">
+    <div class="actions">
+      <a class="link-btn primary" href="#/new">New document</a>
+      <button class="primary" id="btnSeed">Seed from synthetic</button>
+      <button id="btnRefresh">Refresh</button>
+      <button id="btnPublishAll">Publish all pending</button>
+    </div>
+    <p id="status" class="muted"></p>
+    <table>
+      <thead>
+        <tr><th>File</th><th>SharePoint path</th><th>Index</th><th></th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div id="view-detail" class="hidden">
+    <div class="actions">
+      <a class="link-btn" href="#/">← Back to list</a>
+      <button id="btnSave" class="primary">Save changes</button>
+      <button id="btnPublishOne">Publish to AI index</button>
+    </div>
+    <p id="detailStatus" class="muted"></p>
+    <div class="panel" id="detailForm"></div>
+    <h2>Preview</h2>
+    <div class="preview" id="preview"></div>
+    <h2>Last action</h2>
+    <pre class="log" id="logDetail">—</pre>
+  </div>
+
+  <div id="view-new" class="hidden">
+    <div class="actions">
+      <a class="link-btn" href="#/">← Back to list</a>
+      <button id="btnCreate" class="primary">Create document</button>
+    </div>
+    <div class="panel" id="newForm"></div>
+    <h2>Preview</h2>
+    <div class="preview" id="previewNew"></div>
+    <pre class="log" id="logNew">—</pre>
+  </div>
+
+  <div id="view-list-log" class="hidden">
+    <h2>Last action</h2>
+    <pre class="log" id="log">—</pre>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const logEl = document.getElementById("log");
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = body.detail;
+        const msg = Array.isArray(detail)
+          ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
+          : (detail || res.statusText);
+        throw new Error(msg);
+      }
+      return body;
+    }
+
+    function setLog(el, obj) {
+      if (el) el.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+    }
+
+    function renderMarkdown(el, text) {
+      if (window.marked) el.innerHTML = marked.parse(text || "");
+      else el.textContent = text || "";
+    }
+
+    function metaFields(prefix) {
+      return `
+        <div class="grid2">
+          <div><label>File name<input id="${prefix}-file_name" /></label></div>
+          <div><label>Relative path (folder/file.md)<input id="${prefix}-rel_path" placeholder="legal/my-memo.md" /></label></div>
+          <div><label>SharePoint path<input id="${prefix}-sharepoint_path" placeholder="/sites/HarborLine/..." /></label></div>
+          <div><label>Doc type<input id="${prefix}-doc_type" placeholder="rights_clearance" /></label></div>
+          <div><label>Department<input id="${prefix}-department" /></label></div>
+          <div><label>Confidentiality<input id="${prefix}-confidentiality" value="internal" /></label></div>
+          <div><label>Series<input id="${prefix}-series" value="Harbor Line" /></label></div>
+          <div><label>Rights tier<input id="${prefix}-rights_tier" placeholder="cleared / pending" /></label></div>
+        </div>
+        <label>Tags (comma-separated)<input id="${prefix}-tags" placeholder="music, EMEA" /></label>
+        <label>Body (Markdown)<textarea id="${prefix}-content"></textarea></label>
+      `;
+    }
+
+    function readMeta(prefix) {
+      const tagsRaw = document.getElementById(`${prefix}-tags`).value.trim();
+      return {
+        file_name: document.getElementById(`${prefix}-file_name`).value.trim(),
+        rel_path: document.getElementById(`${prefix}-rel_path`).value.trim(),
+        sharepoint_path: document.getElementById(`${prefix}-sharepoint_path`).value.trim() || null,
+        doc_type: document.getElementById(`${prefix}-doc_type`).value.trim() || null,
+        department: document.getElementById(`${prefix}-department`).value.trim() || null,
+        confidentiality: document.getElementById(`${prefix}-confidentiality`).value.trim() || "internal",
+        series: document.getElementById(`${prefix}-series`).value.trim() || null,
+        rights_tier: document.getElementById(`${prefix}-rights_tier`).value.trim() || null,
+        tags: tagsRaw ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        content: document.getElementById(`${prefix}-content`).value,
+      };
+    }
+
+    function fillMeta(prefix, item) {
+      document.getElementById(`${prefix}-file_name`).value = item.file_name || "";
+      document.getElementById(`${prefix}-rel_path`).value = item.rel_path || "";
+      document.getElementById(`${prefix}-sharepoint_path`).value = item.sharepoint_path || "";
+      document.getElementById(`${prefix}-doc_type`).value = item.doc_type || "";
+      document.getElementById(`${prefix}-department`).value = item.department || "";
+      document.getElementById(`${prefix}-confidentiality`).value = item.confidentiality || "internal";
+      document.getElementById(`${prefix}-series`).value = item.series || "";
+      document.getElementById(`${prefix}-rights_tier`).value = item.rights_tier || "";
+      document.getElementById(`${prefix}-tags`).value = (item.tags || []).join(", ");
+      document.getElementById(`${prefix}-content`).value = item.content || "";
+    }
+
+    function showView(name) {
+      document.getElementById("view-list").classList.toggle("hidden", name !== "list");
+      document.getElementById("view-list-log").classList.toggle("hidden", name !== "list");
+      document.getElementById("view-detail").classList.toggle("hidden", name !== "detail");
+      document.getElementById("view-new").classList.toggle("hidden", name !== "new");
+    }
+
+    let currentItemId = null;
+
+    async function loadHealth() {
+      const h = await api("/health");
+      statusEl.textContent = `Platform: ${h.platform_root_exists ? "ok" : "MISSING"} · Catalog: ${h.catalog_db}`;
+    }
+
+    async function loadItems() {
+      const data = await api("/api/items");
+      const base = statusEl.textContent.split(" · ")[0];
+      statusEl.textContent = `${base} · ${data.count} items (${data.publish_pending} pending publish)`;
+      const rowsEl = document.getElementById("rows");
+      rowsEl.innerHTML = "";
+      for (const item of data.items) {
+        const tr = document.createElement("tr");
+        const pending = item.publish_pending;
+        tr.innerHTML = `
+          <td><code>${item.file_name}</code><br><span class="muted">${item.rel_path}</span></td>
+          <td class="muted">${item.sharepoint_path || "—"}</td>
+          <td><span class="badge ${pending ? "" : "ok"}">${pending ? "pending" : "published"}</span></td>
+          <td class="row-actions">
+            <a class="link-btn" href="#/item/${item.item_id}">Open</a>
+            ${pending ? `<button type="button" data-pub="${item.item_id}">Publish</button>` : ""}
+          </td>
+        `;
+        rowsEl.appendChild(tr);
+      }
+      rowsEl.querySelectorAll("button[data-pub]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          try {
+            setLog(logEl, await api(`/api/items/${btn.dataset.pub}/publish`, { method: "POST" }));
+            await refreshList();
+          } catch (e) { setLog(logEl, { error: String(e) }); }
+        });
+      });
+    }
+
+    async function refreshList() {
+      await loadHealth();
+      await loadItems();
+    }
+
+    async function openDetail(itemId) {
+      currentItemId = itemId;
+      showView("detail");
+      const form = document.getElementById("detailForm");
+      if (!form.dataset.ready) {
+        form.innerHTML = metaFields("edit");
+        form.dataset.ready = "1";
+        document.getElementById("edit-content").addEventListener("input", () => {
+          renderMarkdown(document.getElementById("preview"), document.getElementById("edit-content").value);
+        });
+      }
+      const item = await api(`/api/items/${itemId}`);
+      fillMeta("edit", item);
+      renderMarkdown(document.getElementById("preview"), item.content);
+      document.getElementById("detailStatus").textContent =
+        item.publish_pending ? "Unpublished changes — save then Publish to AI index." : "In sync with last publish.";
+    }
+
+    function openNewForm() {
+      showView("new");
+      const form = document.getElementById("newForm");
+      if (!form.dataset.ready) {
+        form.innerHTML = metaFields("new");
+        form.dataset.ready = "1";
+        document.getElementById("new-content").value = "# New document\\n\\nDescribe the asset or clearance memo here.\\n";
+        document.getElementById("new-file_name").value = "new-memo.md";
+        document.getElementById("new-rel_path").value = "legal/new-memo.md";
+        document.getElementById("new-department").value = "legal";
+        document.getElementById("new-doc_type").value = "rights_clearance";
+        document.getElementById("new-content").addEventListener("input", () => {
+          renderMarkdown(document.getElementById("previewNew"), document.getElementById("new-content").value);
+        });
+      }
+      renderMarkdown(document.getElementById("previewNew"), document.getElementById("new-content").value);
+    }
+
+    async function route() {
+      const hash = location.hash || "#/";
+      if (hash.startsWith("#/item/")) {
+        const id = hash.slice("#/item/".length);
+        await openDetail(id);
+        return;
+      }
+      if (hash === "#/new") {
+        openNewForm();
+        return;
+      }
+      showView("list");
+      await refreshList();
+    }
+
+    document.getElementById("btnSeed").addEventListener("click", async () => {
+      try {
+        setLog(logEl, await api("/admin/seed-from-synthetic", { method: "POST" }));
+        await refreshList();
+      } catch (e) { setLog(logEl, { error: String(e) }); }
+    });
+    document.getElementById("btnRefresh").addEventListener("click", refreshList);
+    document.getElementById("btnPublishAll").addEventListener("click", async () => {
+      try {
+        setLog(logEl, await api("/api/admin/publish-all-pending?run_worker=false", { method: "POST" }));
+        await refreshList();
+      } catch (e) { setLog(logEl, { error: String(e) }); }
+    });
+
+    document.getElementById("btnSave").addEventListener("click", async () => {
+      if (!currentItemId) return;
+      const body = readMeta("edit");
+      try {
+        const updated = await api(`/api/items/${currentItemId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        setLog(document.getElementById("logDetail"), updated);
+        await openDetail(currentItemId);
+      } catch (e) { setLog(document.getElementById("logDetail"), { error: String(e) }); }
+    });
+
+    document.getElementById("btnPublishOne").addEventListener("click", async () => {
+      if (!currentItemId) return;
+      try {
+        setLog(document.getElementById("logDetail"), await api(`/api/items/${currentItemId}/publish`, { method: "POST" }));
+        await openDetail(currentItemId);
+      } catch (e) { setLog(document.getElementById("logDetail"), { error: String(e) }); }
+    });
+
+    document.getElementById("btnCreate").addEventListener("click", async () => {
+      const body = readMeta("new");
+      try {
+        const created = await api("/api/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        setLog(document.getElementById("logNew"), created);
+        location.hash = `#/item/${created.item_id}`;
+        await route();
+      } catch (e) { setLog(document.getElementById("logNew"), { error: String(e) }); }
+    });
+
+    window.addEventListener("hashchange", () => route().catch((e) => setLog(logEl, { error: String(e) })));
+    route().catch((e) => setLog(logEl, { error: String(e) }));
+  </script>
+</body>
+</html>

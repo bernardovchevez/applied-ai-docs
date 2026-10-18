@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.localhost
+data/catalog.sqlite
+data/blobs/
+*.log
+.DS_Store
+.cursor/
