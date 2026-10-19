@@ -1,5 +1,7 @@
 # applied-ai-docs
 
+[![CI](https://github.com/bernardovchevez/applied-ai-docs/actions/workflows/ci.yml/badge.svg)](https://github.com/bernardovchevez/applied-ai-docs/actions/workflows/ci.yml)
+
 SharePoint-style **document catalog** for the Applied AI Platform. **Source of truth for document bodies and library metadata**; [applied-ai-platform](https://github.com/bernardovchevez/applied-ai-platform) owns pgvector, RAG, and agents **after Publish**.
 
 Publishes to `data/lake/raw/` and emits `document_ingested` events for `embed_worker.py`. See platform [document-corpus-sources.md](https://github.com/bernardovchevez/applied-ai-platform/blob/main/docs/document-corpus-sources.md).
